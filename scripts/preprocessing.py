@@ -1,7 +1,5 @@
-# scripts/preprocessing.py
-
 import numpy as np
-
+from sklearn.preprocessing import StandardScaler
 
 def preprocess_data(df):
     df.replace('?', np.nan, inplace=True)
@@ -16,5 +14,8 @@ def preprocess_data(df):
 
     df.fillna(df.median(numeric_only=True), inplace=True)
     df.fillna(df.mode().iloc[0], inplace=True)
+
+    scaler = StandardScaler()
+    df[numeric_columns[:-1]] = scaler.fit_transform(df[numeric_columns[:-1]])
 
     return df

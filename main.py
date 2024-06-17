@@ -1,11 +1,12 @@
-import numpy as np
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np  # Import numpy
 
 from scripts.data_loading import load_data
 from scripts.preprocessing import preprocess_data
 from scripts.feature_engineering import create_features
-from scripts.model import train_model, predict_price
-
+from scripts.model import train_model, predict_price_range
 
 def main():
     # Путь к файлу с данными
@@ -20,23 +21,30 @@ def main():
     print("Данные обработаны")
 
     # Шаг 3: Формирование признаков
-    X, y = create_features(df)
+    X, y, cat_features = create_features(df)
     print("Признаки созданы")
 
     # Шаг 4: Обучение модели
-    model = train_model(X, y)
+    model = train_model(X, y, cat_features)
     print("Модель обучена")
 
     # Шаг 5: Прогнозирование цены на основе пользовательского ввода
-    input_data = get_user_input(df)
-    price_prediction = predict_price(model, input_data)
-    print(f"Прогнозируемая цена автомобиля: {price_prediction}")
+    input_data = get_user_input(df, X)
+    price_prediction_low, price_prediction_high = predict_price_range(model, input_data, X, y)
+    print(f"Прогнозируемая цена автомобиля: от {price_prediction_low} до {price_prediction_high}")
 
+    # Шаг 6: Построение корреляционной матрицы
+    plot_correlation_matrix(df)
 
-def get_user_input(df):
+def get_user_input(df, X):
     input_data = []
 
-    # Определяем возможные значения для категориальных переменных
+    mandatory_fields = [
+        "make", "fuel-type", "aspiration", "num-of-doors", "body-style",
+        "drive-wheels", "engine-location", "engine-size", "horsepower",
+        "curb-weight", "city-mpg", "highway-mpg"
+    ]
+
     categorical_options = {
         "make": df["make"].unique().tolist(),
         "fuel-type": df["fuel-type"].unique().tolist(),
@@ -50,9 +58,9 @@ def get_user_input(df):
         "fuel-system": df["fuel-system"].unique().tolist(),
     }
 
-    # Запрашиваем у пользователя значения для всех столбцов
+    # Запрашиваем у пользователя значения для обязательных столбцов
     print("Введите значения для следующих характеристик автомобиля:")
-    for column in df.columns:
+    for column in mandatory_fields:
         if column in categorical_options:
             print(f"Возможные значения для {column}: {categorical_options[column]}")
             value = input(f"{column}: ")
@@ -64,18 +72,56 @@ def get_user_input(df):
             value = float(input(f"{column}: "))
             input_data.append(value)
 
+    # Для необязательных столбцов заполняем пропуски медианой или модой
+    for column in df.columns:
+        if column not in mandatory_fields:
+            if column in categorical_options:
+                print(f"Возможные значения для {column}: {categorical_options[column]}")
+                value = input(f"{column} (необязательно): ")
+                if value == '':
+                    value = df[column].mode()[0]
+                while value not in categorical_options[column]:
+                    print(f"Недопустимое значение. Возможные значения для {column}: {categorical_options[column]}")
+                    value = input(f"{column}: ")
+                input_data.append(value)
+            else:
+                value = input(f"{column} (необязательно): ")
+                if value == '':
+                    value = df[column].median()
+                else:
+                    value = float(value)
+                input_data.append(value)
+
     # Преобразуем категориальные признаки в dummy-переменные
     input_df = pd.DataFrame([input_data], columns=df.columns)
     input_df = pd.get_dummies(input_df)
 
     # Дополняем недостающие dummy-переменные нулями
-    for col in df.columns:
+    for col in X.columns:
         if col not in input_df.columns:
             input_df[col] = 0
 
+    # Приведение порядка столбцов в соответствие с обучающей выборкой
+    input_df = input_df.reindex(columns=X.columns, fill_value=0)
+
+    # Ensure that categorical features are strings for CatBoost
+    for col in input_df.columns:
+        if any(cat_col in col for cat_col in categorical_options.keys()):
+            input_df[col] = input_df[col].astype(str)
+
     input_data = input_df.values[0]
+
     return input_data
 
+def plot_correlation_matrix(df):
+    numeric_df = df.select_dtypes(include=[np.number])
+    correlation_matrix = numeric_df.corr()
+    plt.figure(figsize=(15, 10))
+    sns.heatmap(correlation_matrix, annot=True, fmt=".2f", cmap="coolwarm")
+    plt.title("Корреляционная матрица признаков")
+    plt.show()
 
 if __name__ == "__main__":
     main()
+
+#метод KNN (чтобы заменить nan на наиболее вероятные значения), подбор гиперпараметров, ансамблевые модели (не бустинг, не бэгинг)

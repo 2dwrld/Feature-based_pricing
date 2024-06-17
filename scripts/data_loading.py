@@ -1,5 +1,3 @@
-# scripts/data_loading.py
-
 import pandas as pd
 
 def load_data(file_path):
