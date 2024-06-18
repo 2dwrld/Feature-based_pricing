@@ -135,12 +135,13 @@ def get_user_input(df, X):
 
 
 def plot_correlation_matrix(df):
-    numeric_df = df.select_dtypes(include=[np.number])
-    correlation_matrix = numeric_df.corr()
-    plt.figure(figsize=(15, 10))
-    sns.heatmap(correlation_matrix, annot=True, fmt=".2f", cmap="coolwarm")
-    plt.title("Корреляционная матрица признаков")
-    plt.show()
+    numeric_df = df.select_dtypes(include=[float, int])  # Select only numeric columns
+    corr = numeric_df.corr()
+    plt.figure(figsize=(12, 8))
+    sns.heatmap(corr, annot=True, cmap='coolwarm', fmt='.2f', linewidths=0.5)
+    plt.title('Correlation Matrix')
+    plt.savefig('correlation_matrix.png')  # Save the plot to a file
+    print("Correlation matrix saved as 'correlation_matrix.png'")
 
 
 def build_stacked_model(base_models, meta_model, X, y):
