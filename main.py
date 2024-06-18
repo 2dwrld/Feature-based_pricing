@@ -7,10 +7,11 @@ from scripts.data_loading import load_data
 from scripts.hyperparameter_tuning import tune_hyperparameters
 from scripts.preprocessing import preprocess_data
 from scripts.feature_engineering import create_features
-from scripts.model import train_model, predict_price_range
+from scripts.model import predict_price_range
 
 from sklearn.impute import KNNImputer
 from mlxtend.regressor import StackingRegressor
+
 
 def main():
     # Путь к файлу с данными
@@ -33,7 +34,7 @@ def main():
     print("Признаки созданы")
 
     # Шаг 4: Подбор гиперпараметров для ансамблевой модели
-    best_model = tune_hyperparameters(X, y, cat_features)
+    best_model = tune_hyperparameters(X, y)
     print("Гиперпараметры подобраны")
 
     # Шаг 5: Прогнозирование цены на основе пользовательского ввода
@@ -43,6 +44,7 @@ def main():
 
     # Шаг 6: Построение корреляционной матрицы
     plot_correlation_matrix(df)
+
 
 def impute_nan_knn(df):
     # Identify numeric columns with missing values
@@ -59,6 +61,7 @@ def impute_nan_knn(df):
         df_imputed[numeric_columns_with_nan] = imputer.fit_transform(df[numeric_columns_with_nan])
 
     return df_imputed
+
 
 def get_user_input(df, X):
     input_data = []
@@ -82,60 +85,54 @@ def get_user_input(df, X):
         "fuel-system": df["fuel-system"].unique().tolist(),
     }
 
-    # Запрашиваем у пользователя значения для обязательных столбцов
-    print("Введите значения для следующих характеристик автомобиля:")
+    # Request user input for mandatory fields
+    print("Enter values for the following car characteristics:")
     for column in mandatory_fields:
         if column in categorical_options:
-            print(f"Возможные значения для {column}: {categorical_options[column]}")
+            print(f"Possible values for {column}: {categorical_options[column]}")
             value = input(f"{column}: ")
             while value not in categorical_options[column]:
-                print(f"Недопустимое значение. Возможные значения для {column}: {categorical_options[column]}")
+                print(f"Invalid value. Possible values for {column}: {categorical_options[column]}")
                 value = input(f"{column}: ")
             input_data.append(value)
         else:
             value = float(input(f"{column}: "))
             input_data.append(value)
 
-    # Для необязательных столбцов заполняем пропуски медианой или модой
+    # Fill in missing values for optional fields with mode or median
     for column in df.columns:
         if column not in mandatory_fields:
             if column in categorical_options:
-                print(f"Возможные значения для {column}: {categorical_options[column]}")
-                value = input(f"{column} (необязательно): ")
+                print(f"Possible values for {column}: {categorical_options[column]}")
+                value = input(f"{column} (optional): ")
                 if value == '':
                     value = df[column].mode()[0]
                 while value not in categorical_options[column]:
-                    print(f"Недопустимое значение. Возможные значения для {column}: {categorical_options[column]}")
+                    print(f"Invalid value. Possible values for {column}: {categorical_options[column]}")
                     value = input(f"{column}: ")
                 input_data.append(value)
             else:
-                value = input(f"{column} (необязательно): ")
+                value = input(f"{column} (optional): ")
                 if value == '':
                     value = df[column].median()
                 else:
                     value = float(value)
                 input_data.append(value)
 
-    # Преобразуем категориальные признаки в dummy-переменные
+    # Convert categorical features to dummy variables
     input_df = pd.DataFrame([input_data], columns=df.columns)
     input_df = pd.get_dummies(input_df)
 
-    # Дополняем недостающие dummy-переменные нулями
+    # Add missing dummy variables with zeros
     for col in X.columns:
         if col not in input_df.columns:
             input_df[col] = 0
 
-    # Приведение порядка столбцов в соответствие с обучающей выборкой
+    # Align the column order with the training set
     input_df = input_df.reindex(columns=X.columns, fill_value=0)
 
-    # Ensure that categorical features are strings for CatBoost
-    for col in input_df.columns:
-        if any(cat_col in col for cat_col in categorical_options.keys()):
-            input_df[col] = input_df[col].astype(str)
+    return input_df
 
-    input_data = input_df.values[0]
-
-    return input_data
 
 def plot_correlation_matrix(df):
     numeric_df = df.select_dtypes(include=[np.number])
@@ -145,10 +142,12 @@ def plot_correlation_matrix(df):
     plt.title("Корреляционная матрица признаков")
     plt.show()
 
+
 def build_stacked_model(base_models, meta_model, X, y):
     stack = StackingRegressor(regressors=base_models, meta_regressor=meta_model)
     stack.fit(X, y)
     return stack
+
 
 if __name__ == "__main__":
     main()

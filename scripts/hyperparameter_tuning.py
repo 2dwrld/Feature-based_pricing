@@ -1,35 +1,67 @@
+import numpy as np
+from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import GridSearchCV
-from mlxtend.regressor import StackingRegressor
-
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from scripts.model import CustomStackingRegressor
 
 def tune_hyperparameters(X, y):
-    rf = RandomForestRegressor(random_state=42)
-    gb = GradientBoostingRegressor(random_state=42)
-    meta_regressor = LinearRegression()
+    # Определяем базовые модели
+    base_models = [
+        ('rf', RandomForestRegressor()),
+        ('gb', GradientBoostingRegressor()),
+        ('lr', LinearRegression())
+    ]
 
-    stacking_regressor = StackingRegressor(
-        regressors=[('rf', rf), ('gb', gb)],
-        meta_regressor=meta_regressor
+    # Извлечение моделей из кортежей для StackingRegressor
+    base_models_only = [model for name, model in base_models]
+
+    # Определяем мета модель
+    meta_model = GradientBoostingRegressor()
+
+    # Создаем стековую модель
+    stacked_model = CustomStackingRegressor(
+        regressors=base_models_only,
+        meta_regressor=meta_model
     )
 
+    # Определяем параметры для подбора
     param_grid = {
-        'regressors__rf__n_estimators': [50, 100],  # [50, 100]
-        'regressors__rf__max_depth': [5, 10],  # [5, 10]
-        'regressors__rf__min_samples_split': [2, 5],  # [2, 5]
-        'regressors__rf__min_samples_leaf': [1, 2],  # [1, 2]
-
-        'regressors__gb__n_estimators': [50, 100],  # [50, 100]
-        'regressors__gb__learning_rate': [0.05, 0.1],  # [0.05, 0.1]
-        'regressors__gb__max_depth': [5, 10],  # [5, 10]
-        'regressors__gb__min_samples_split': [2, 5],  # [2, 5]
-        'regressors__gb__min_samples_leaf': [1, 2],  # [1, 2]
-
-        'meta_regressor__fit_intercept': [True, False]
+        'model__regressors__0__n_estimators': [50, 100],
+        'model__regressors__0__max_depth': [5, 10],
+        'model__regressors__1__n_estimators': [50, 100],
+        'model__regressors__1__learning_rate': [0.01, 0.1],
+        'model__regressors__2__fit_intercept': [True, False],
+        'model__meta_regressor__n_estimators': [50, 100],
+        'model__meta_regressor__learning_rate': [0.01, 0.1]
     }
 
-    grid_search = GridSearchCV(estimator=stacking_regressor, param_grid=param_grid, cv=3, n_jobs=-1)
+    # Настройка предварительной обработки данных
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', SimpleImputer(strategy='median'), X.columns)
+        ],
+        remainder='passthrough'
+    )
+
+    # Создание конвейера с предварительной обработкой и стековой моделью
+    pipeline = Pipeline(steps=[
+        ('preprocessor', preprocessor),
+        ('model', stacked_model)
+    ])
+
+    # Настройка GridSearchCV
+    grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid,
+                               cv=5, scoring='neg_mean_squared_error', n_jobs=-1)
+
+    # Обучение модели
     grid_search.fit(X, y)
+
+    # Выводим лучшие параметры и лучшую оценку
+    print(f"Best parameters: {grid_search.best_params_}")
+    print(f"Best score (MSE): {np.sqrt(-grid_search.best_score_)}")
 
     return grid_search.best_estimator_
