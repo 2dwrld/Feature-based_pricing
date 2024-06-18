@@ -12,10 +12,10 @@ from scripts.model import predict_price_range
 from sklearn.impute import KNNImputer
 from mlxtend.regressor import StackingRegressor
 
-
 def main():
     # Путь к файлу с данными
     file_path = 'data/imports-85.data'
+    param_file = 'best_params.json'  # Путь к файлу с гиперпараметрами
 
     # Шаг 1: Загрузка данных
     df = load_data(file_path)
@@ -34,13 +34,13 @@ def main():
     print("Признаки созданы")
 
     # Шаг 4: Подбор гиперпараметров для ансамблевой модели
-    best_model = tune_hyperparameters(X, y)
+    best_model = tune_hyperparameters(X, y, param_file)
     print("Гиперпараметры подобраны")
 
     # Шаг 5: Прогнозирование цены на основе пользовательского ввода
     input_data = get_user_input(df, X)
     price_prediction_low, price_prediction_high = predict_price_range(best_model, input_data, X, y)
-    print(f"Прогнозируемая цена автомобиля (стекинг): от {price_prediction_low} до {price_prediction_high}")
+    print(f"Прогнозируемая цена автомобиля (стекинг): от {int(price_prediction_low)} до {int(price_prediction_high)}")
 
     # Шаг 6: Построение корреляционной матрицы
     plot_correlation_matrix(df)
