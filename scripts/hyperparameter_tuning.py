@@ -58,7 +58,6 @@ def tune_hyperparameters(X, y, param_file='best_params.json'):
         # Попытка загрузки лучших параметров из файла
         with open(param_file, 'r') as file:
             best_params = json.load(file)
-            print("Загружены лучшие параметры из файла")
             # Установим лучшие параметры в pipeline
             pipeline.set_params(**best_params)
             # Фитинг pipeline с данными, чтобы обеспечить соответствие ColumnTransformer

@@ -15,17 +15,11 @@ def main():
     file_path = 'data/imports-85.data'
     param_file = 'best_params.json'
     df = load_data(file_path)
-    print("Данные загружены")
     df = preprocess_data(df)
-    print("Данные обработаны")
     df = impute_nan_knn(df)
-    print("Пропущенные значения заполнены методом KNN")
     X, y, cat_features = create_features(df)
-    print("Признаки созданы")
     best_model = tune_hyperparameters(X, y, param_file)
-    print("Гиперпараметры подобраны")
 
-    print("Enter values for the following car characteristics:")
     input_df, input_categoricals = get_user_input(df, X)
 
     print("Input data passed to predict_price_range:\n", input_df)  # Debug print
@@ -50,9 +44,9 @@ def get_user_input(df, X):
     input_data = []
     input_categoricals = {}
     mandatory_fields = [
-        "make", "fuel-type", "aspiration", "num-of-doors", "body-style",
-        "drive-wheels", "engine-location", "engine-size", "horsepower",
-        "curb-weight", "city-mpg", "highway-mpg"
+        "make", "fuel-type", "aspiration", "num-of-doors", "body-style", "drive-wheels", "engine-location",
+        "engine-type", "fuel-system", "num-of-cylinders", "bore", "stroke", "horsepower", "peak-rpm",
+        "normalized-losses"
     ]
     categorical_options = {
         "make": df["make"].unique().tolist(),
@@ -66,7 +60,6 @@ def get_user_input(df, X):
         "num-of-cylinders": df["num-of-cylinders"].unique().tolist(),
         "fuel-system": df["fuel-system"].unique().tolist(),
     }
-    print("Enter values for the following car characteristics:")
     for column in mandatory_fields:
         if column in categorical_options:
             print(f"Possible values for {column}: {categorical_options[column]}")
