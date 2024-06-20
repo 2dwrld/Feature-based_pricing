@@ -1,0 +1,1 @@
+https://app.clear.ml/projects/*/experiments/fa6742068a6c4266b0461ca2ddd75cc2/info-output/log?columns=selected&columns=type&columns=name&columns=tags&columns=status&columns=project.name&columns=users&columns=started&columns=last_update&columns=last_iteration&columns=parent.name&order=-last_update&filter=&deep=true

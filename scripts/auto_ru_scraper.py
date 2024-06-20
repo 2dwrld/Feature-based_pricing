@@ -3,11 +3,11 @@ from bs4 import BeautifulSoup
 import re
 import time
 
-# Replace with your actual 2Captcha API key
+# Замените на ваш реальный API ключ 2Captcha
 RUCAPTCHA_API_KEY = 'cd92fce3287cd6a04d911e624b67a96b'
 YANDEX_SITE_KEY = 'FEXfAbHQsToo97VidNVk3j4dC74nGW1DgdxjtNB9'
 
-
+# Функция для решения капчи с помощью 2Captcha
 def solve_captcha(api_key, site_key, page_url):
     print("Submitting CAPTCHA to RuCaptcha...")
     response = requests.post(
@@ -31,7 +31,7 @@ def solve_captcha(api_key, site_key, page_url):
     captcha_id = response_data.get('request')
     print(f"CAPTCHA submitted. ID: {captcha_id}")
 
-    # Get the answer token from 2Captcha
+    # Получение ответа капчи от 2Captcha
     while True:
         print("Waiting for CAPTCHA solution...")
         response = requests.get(
@@ -50,15 +50,15 @@ def solve_captcha(api_key, site_key, page_url):
         elif response_data.get('request') != 'CAPCHA_NOT_READY':
             raise Exception(f"Error fetching CAPTCHA solution from RuCaptcha: {response_data.get('request')}")
 
-        time.sleep(5)  # Wait for 5 seconds before checking again
+        time.sleep(5)  # Ждем 5 секунд перед повторной проверкой
 
     token = response_data.get('request')
     print(f"CAPTCHA solved. Token: {token}")
     return token
 
-
+# Функция для получения списка объявлений автомобилей
 def get_car_listings(make=None, body_style=None, drive_type=None, engine_size=None, horsepower=None):
-    # Construct the URL with the provided parameters
+    # Конструируем URL с заданными параметрами
     base_url = "https://auto.ru/cars/"
 
     make_mapping = {
@@ -121,21 +121,21 @@ def get_car_listings(make=None, body_style=None, drive_type=None, engine_size=No
         cars = []
         count = 0
         for listing in soup.find_all('div', class_='ListingItem'):
-            print("Processing a car listing...")  # Debug print
+            print("Processing a car listing...")
             price_block = listing.find('div', class_='ListingItem__priceBlock')
             if price_block:
-                print("Found price block...")  # Debug print
+                print("Found price block...")
                 price_content = price_block.find('div', class_='ListingItemPrice__content')
                 if price_content:
-                    print("Found price content...")  # Debug print
+                    print("Found price content...")
                     price_text = price_content.get_text(strip=True)
-                    print(f"Price text: {price_text}")  # Debug print
+                    print(f"Price text: {price_text}")
                     try:
                         price = int(re.sub(r'[^\d]', '', price_text))
                         cars.append(price)
                         count += 1
                     except ValueError:
-                        print(f"Could not convert price text to int: {price_text}")  # Debug print  # Debug print
+                        print(f"Could not convert price text to int: {price_text}")
         return cars
 
     except requests.RequestException as e:

@@ -7,10 +7,13 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from scripts.model import CustomStackingRegressor
-
+from clearml import Task
 
 def tune_hyperparameters(X, y, param_file='best_params.json'):
-    # Определяем базовые модели
+    # Получение текущей задачи в ClearML
+    task = Task.current_task()
+
+    # Определение базовых моделей для стекинга
     base_models = [
         ('rf', RandomForestRegressor()),
         ('gb', GradientBoostingRegressor()),
@@ -20,16 +23,16 @@ def tune_hyperparameters(X, y, param_file='best_params.json'):
     # Извлечение моделей из кортежей для StackingRegressor
     base_models_only = [model for name, model in base_models]
 
-    # Определяем мета модель
+    # Определение мета-модели для стекинга
     meta_model = GradientBoostingRegressor()
 
-    # Создаем стековую модель
+    # Создание стековой модели
     stacked_model = CustomStackingRegressor(
         regressors=base_models_only,
         meta_regressor=meta_model
     )
 
-    # Определяем параметры для подбора
+    # Определение параметров для подбора
     param_grid = {
         'model__regressors__0__n_estimators': [50, 100, 150, 200],
         'model__regressors__0__max_depth': [5, 10, 15, 20],
@@ -58,8 +61,10 @@ def tune_hyperparameters(X, y, param_file='best_params.json'):
         # Попытка загрузки лучших параметров из файла
         with open(param_file, 'r') as file:
             best_params = json.load(file)
-            # Установим лучшие параметры в pipeline
+            # Установка лучших параметров в pipeline
             pipeline.set_params(**best_params)
+            # Логирование лучших параметров
+            task.connect(best_params)
             # Фитинг pipeline с данными, чтобы обеспечить соответствие ColumnTransformer
             pipeline.fit(X, y)
             return pipeline
@@ -73,6 +78,10 @@ def tune_hyperparameters(X, y, param_file='best_params.json'):
         # Сохранение лучших параметров в файл
         with open(param_file, 'w') as file:
             json.dump(grid_search.best_params_, file)
+
+        # Логирование лучших параметров и метрик в ClearML
+        task.connect(grid_search.best_params_)
+        task.get_logger().report_scalar("Best Score", "MSE", np.sqrt(-grid_search.best_score_), 0)
 
         print(f"Лучшие параметры: {grid_search.best_params_}")
         print(f"Лучший скор (MSE): {np.sqrt(-grid_search.best_score_)}")
